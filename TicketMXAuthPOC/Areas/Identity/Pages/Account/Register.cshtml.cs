@@ -18,25 +18,29 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
+using TicketMXAuthPOC.DTOs;
 using TicketMXAuthPOC.Models;
+using TicketMXAuthPOC.Services;
 
 namespace TicketMXAuthPOC.Areas.Identity.Pages.Account
 {
     public class RegisterModel : PageModel
     {
+        #region CTOR, Fields.
         private readonly SignInManager<User> _signInManager;
         private readonly UserManager<User> _userManager;
         private readonly IUserStore<User> _userStore;
         private readonly IUserEmailStore<User> _emailStore;
         private readonly ILogger<RegisterModel> _logger;
         private readonly IEmailSender _emailSender;
-
+        private readonly ITicketMXService _ticketMXService;
         public RegisterModel(
             UserManager<User> userManager,
             IUserStore<User> userStore,
             SignInManager<User> signInManager,
             ILogger<RegisterModel> logger,
-            IEmailSender emailSender)
+            IEmailSender emailSender,
+            ITicketMXService ticketMXService)
         {
             _userManager = userManager;
             _userStore = userStore;
@@ -44,6 +48,7 @@ namespace TicketMXAuthPOC.Areas.Identity.Pages.Account
             _signInManager = signInManager;
             _logger = logger;
             _emailSender = emailSender;
+            _ticketMXService = ticketMXService;
         }
 
         /// <summary>
@@ -122,7 +127,7 @@ namespace TicketMXAuthPOC.Areas.Identity.Pages.Account
 
             #endregion
         }
-
+        #endregion
 
         public async Task OnGetAsync(string returnUrl = null)
         {
@@ -144,6 +149,21 @@ namespace TicketMXAuthPOC.Areas.Identity.Pages.Account
 
                 await _userStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
                 await _emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
+
+                var tokenResponseModel = await _ticketMXService.Register(new RegisterDto
+                {
+                    Email = Input.Email,
+                    FullName = Input.FullName,
+                    Password = Input.Password,
+                    Mobile = Input.Mobile,
+                    BirthDate = Input.BirthDate,
+                    Gender = Input.Gender
+                });
+
+                // Storing Access/Refresh tokens in cookie [POC purpose only]. 
+                Response.Cookies.Append(constants.AccessToken, tokenResponseModel.AccessToken);
+                Response.Cookies.Append(constants.RefreshToken, tokenResponseModel.RefreshToken);
+
                 var result = await _userManager.CreateAsync(user, Input.Password);
 
                 if (result.Succeeded)

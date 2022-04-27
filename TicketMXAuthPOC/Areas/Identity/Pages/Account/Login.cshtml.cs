@@ -15,18 +15,23 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
 using TicketMXAuthPOC.Models;
+using TicketMXAuthPOC.Services;
+using TicketMXAuthPOC.DTOs;
 
 namespace TicketMXAuthPOC.Areas.Identity.Pages.Account
 {
     public class LoginModel : PageModel
     {
+        #region CTOR, Fields.
         private readonly SignInManager<User> _signInManager;
         private readonly ILogger<LoginModel> _logger;
+        private readonly ITicketMXService _ticketMXService;
 
-        public LoginModel(SignInManager<User> signInManager, ILogger<LoginModel> logger)
+        public LoginModel(SignInManager<User> signInManager, ILogger<LoginModel> logger, ITicketMXService ticketMXService)
         {
             _signInManager = signInManager;
             _logger = logger;
+            _ticketMXService = ticketMXService;
         }
 
         /// <summary>
@@ -84,6 +89,7 @@ namespace TicketMXAuthPOC.Areas.Identity.Pages.Account
             [Display(Name = "Remember me?")]
             public bool RememberMe { get; set; }
         }
+        #endregion
 
         public async Task OnGetAsync(string returnUrl = null)
         {
@@ -115,6 +121,15 @@ namespace TicketMXAuthPOC.Areas.Identity.Pages.Account
                 var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
                 if (result.Succeeded)
                 {
+                    var tokenResponseModel = await _ticketMXService.Login(new LoginDto
+                    {
+                        Email = Input.Email,
+                        Password = Input.Password,
+                    });
+                    // Storing Access/Refresh tokens in cookie [POC purpose only]. 
+                    Response.Cookies.Append(constants.AccessToken, tokenResponseModel.AccessToken);
+                    Response.Cookies.Append(constants.RefreshToken, tokenResponseModel.RefreshToken);
+
                     _logger.LogInformation("User logged in.");
                     return LocalRedirect(returnUrl);
                 }

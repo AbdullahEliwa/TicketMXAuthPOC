@@ -27,6 +27,12 @@ namespace TicketMXAuthPOC.Areas.Identity.Pages.Account
         public async Task<IActionResult> OnPost(string returnUrl = null)
         {
             await _signInManager.SignOutAsync();
+
+            // Remove Access/Refresh tokens from cookie
+            Response.Cookies.Delete(constants.AccessToken);
+            Response.Cookies.Delete(constants.RefreshToken);
+
+
             _logger.LogInformation("User logged out.");
             if (returnUrl != null)
             {

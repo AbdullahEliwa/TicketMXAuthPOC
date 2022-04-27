@@ -1,35 +1,39 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Cors;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using TicketMXAuthPOC.Models;
+using TicketMXAuthPOC.Services;
 
 namespace TicketMXAuthPOC.Pages
 {
-    public class IndexModel : PageModel
+    public class EventModel : PageModel
     {
-        #region 
-        private readonly ILogger<IndexModel> _logger;
+        #region CTOR, Fields.
+        private readonly ILogger<EventModel> _logger;
         private readonly SignInManager<User> _signInManager;
+        private readonly ITicketMXService _ticketMXService;
 
-        public IndexModel(ILogger<IndexModel> logger, SignInManager<User> signInManager)
+        public EventModel(ILogger<EventModel> logger, ITicketMXService ticketMXService, SignInManager<User> signInManager)
         {
             _logger = logger;
+            _ticketMXService = ticketMXService;
             _signInManager = signInManager;
         }
 
-        public string EventUrl { get; set; }
+        public string HtmlPage { get; set; }
         #endregion
-
         public async Task<IActionResult> OnGet()
         {
-            var returnUrl = "/";
+            var returnUrl = "/event";
             var accessToken = Request.Cookies[constants.AccessToken];
             if (string.IsNullOrEmpty(accessToken))
             {
                 await _signInManager.SignOutAsync();
                 return RedirectToPage("/Account/Login", new { area = "Identity", returnUrl = returnUrl });
             }
-            EventUrl = $"https://dev.ticketmx.com/ar/dt/687?authorization={accessToken}";
+
+            HtmlPage = await _ticketMXService.GetEvent(accessToken!);
             return Page();
         }
     }
